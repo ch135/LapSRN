@@ -6,10 +6,11 @@
 import tensorflow as tf
 import tensorlayer as tl
 import config
+import numpy as np
 
 
-def lrelu(x):
-    return tf.maximum(x * 0.2, x)
+def LRelu(x):
+    return tf.nn.leaky_relu(x, alpha=0.2)
 
 
 def LapSRNSingleLevel(net_image, net_feature, reuse=False):
@@ -29,7 +30,7 @@ def LapSRNSingleLevel(net_image, net_feature, reuse=False):
         net_feature = tl.layers.Conv2dLayer(net_feature, [3, 3, 64, 256], strides=[1, 1, 1, 1],
                                             W_init=tf.contrib.layers.xavier_initializer(),
                                             name="upconv_feature")
-        net_feature = tl.layers.SubpixelConv2d(net_feature, scale=2, n_out_channel=3, act=lrelu,
+        net_feature = tl.layers.SubpixelConv2d(net_feature, scale=2, n_out_channel=3, act=LRelu,
                                                name="subpixl_feature")
         gradient_level = tl.layers.Conv2dLayer(net_feature, shape=[3, 3, 64, 3], strides=[1, 1, 1, 1],
                                                W_init=tf.contrib.layers.xavier_initializer(), name="grad")
@@ -44,6 +45,9 @@ def LapSRNSingleLevel(net_image, net_feature, reuse=False):
 
 
 def LapSRN(inputs, is_train=False, reuse=False):
+    n_level = int(np.log2(config.model.scale))
+    assert n_level >= 1
+
     with tf.variable_scope("LapSRN", reuse=reuse) as vs:
         tl.layers.set_name_reuse(reuse)
 
