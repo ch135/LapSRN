@@ -5,7 +5,7 @@
 # @Software: PyCharm
 import tensorflow as tf
 import tensorlayer as tl
-import config
+from config import *
 import numpy as np
 
 
@@ -27,19 +27,17 @@ def LapSRNSingleLevel(net_image, net_feature, reuse=False):
                                                  name="add_feature")
 
         net_feature = tl.layers.PReluLayer(net_feature, name="preul_feature")
-        net_feature = tl.layers.Conv2dLayer(net_feature, [3, 3, 64, 256], strides=[1, 1, 1, 1],
-                                            W_init=tf.contrib.layers.xavier_initializer(),
-                                            name="upconv_feature")
-        net_feature = tl.layers.SubpixelConv2d(net_feature, scale=2, n_out_channel=3, act=LRelu,
-                                               name="subpixl_feature")
+        net_feature = tl.layers.Conv2dLayer(net_feature, shape=[3, 3, 64, 256], strides=[1, 1, 1, 1],
+                                            W_init=tf.contrib.layers.xavier_initializer(), name="upconv_feature")
+        net_feature = tl.layers.SubpixelConv2d(net_feature, scale=2, n_out_channel=64, name="subpixel_feature")
+
         gradient_level = tl.layers.Conv2dLayer(net_feature, shape=[3, 3, 64, 3], strides=[1, 1, 1, 1],
-                                               W_init=tf.contrib.layers.xavier_initializer(), name="grad")
+                                               W_init=tf.contrib.layers.xavier_initializer(), act=LRelu, name="grad")
 
         net_image = tl.layers.Conv2dLayer(net_image, shape=[3, 3, 3, 12], strides=[1, 1, 1, 1],
                                           W_init=tf.contrib.layers.xavier_initializer(), name="upconv_image")
-        net_image = tl.layers.SubpixelConv2d(net_image, scale=2, n_out_channel=3,
-                                             name="subpixl_iamge")
-        net_image = tl.layers.ElementwiseLayer(layers=[gradient_level, net_image], combine_fn=tf.add,
+        net_image = tl.layers.SubpixelConv2d(net_image, scale=2, n_out_channel=3, name="subpixel_iamge")
+        net_image = tl.layers.ElementwiseLayer(prev_layer=[gradient_level, net_image], combine_fn=tf.add,
                                                name="add_image")
     return net_image, net_feature, gradient_level
 
