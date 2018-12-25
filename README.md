@@ -19,8 +19,8 @@ Deep Laplacian Pyramid Networks for Fast and Accurate Super-Resolution
   <img src="https://github.com/ch135/LapSRN/blob/master/sample/test/test_output1.png"  width="410px" height="410px" align="left">
 </div>
 
-## 4.Vaild Result
 <div>
+  <h2>4.Vaild Result</h2>
     <img src="https://github.com/ch135/LapSRN/blob/master/sample/train/train_sample_output.png" width="350px" height="350px" align="left" alt="输入图像"/>
     <img src="https://github.com/ch135/LapSRN/blob/master/sample/train/train_predict_460.png" width="350px" height="350px" align="left" alt="验证图像"/>
 </div>
