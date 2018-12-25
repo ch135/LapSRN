@@ -2,10 +2,9 @@
 拉普拉斯金字塔的图像超分辨率处理
 ## Net Work
 <div>
-  <img src="https://github.com/ch135/LapSRN/blob/master/network/1.png" width="450px", height="250px" align="left"/>
-  <img src="https://github.com/ch135/LapSRN/blob/master/network/2.png" width="450px", height="250px" align="left"/>
+  <img src="https://github.com/ch135/LapSRN/blob/master/network/1.png" width="900px", height="500px" align="center"/>
+  <img src="https://github.com/ch135/LapSRN/blob/master/network/2.png" width="900px", height="500px" align="center"/>
 </div>
-<br/><br/>
 
 ## PSNR
 <div>
