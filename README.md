@@ -6,7 +6,7 @@ Deep Laplacian Pyramid Networks for Fast and Accurate Super-Resolution
   <img src="https://github.com/ch135/LapSRN/blob/master/network/2.png" width="900px", height="500px" align="center"/>
 </div>
 
-## 2.PSNR
+## 2.Training PSNR
 <div>
   <img src="https://github.com/ch135/LapSRN/blob/master/sample/train/PSNR.png" width="640px" height="480px"/>
 </div>
