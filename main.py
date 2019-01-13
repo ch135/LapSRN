@@ -6,9 +6,13 @@
 import argparse
 import tensorlayer as tl
 from config import *
-import os, utils, model, time
+import os, model, time
 import numpy as np
 import tensorflow as tf
+from utils import *
+import pandas as pd
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 batch_size = config.train.batch_size
 patch_size = config.train.in_patch_size
@@ -52,8 +56,8 @@ def load_file_list():
 def prepare_nn_data(hr_image_list, lr_image_list, idx_umg=None):
     i = np.random.randint(len(hr_image_list)) if idx_umg is None else idx_umg
 
-    input_image = utils.get_iamge(lr_image_list[i])
-    output_image = utils.get_iamge(hr_image_list[i])
+    input_image = get_iamge(lr_image_list[i])
+    output_image = get_iamge(hr_image_list[i])
     scale = output_image.shape[0] // input_image.shape[0]
     assert scale == config.model.scale
 
@@ -66,18 +70,18 @@ def prepare_nn_data(hr_image_list, lr_image_list, idx_umg=None):
         in_row_ind = np.random.randint(0, input_image.shape[0] - patch_size)
         in_col_ind = np.random.randint(0, input_image.shape[1] - patch_size)
 
-        input_cropped = utils.augment_imags(input_image[in_row_ind:in_row_ind + patch_size,
-                                            in_col_ind:in_col_ind + patch_size])
-        input_cropped = utils.nomalize_iamge(input_cropped)
+        input_cropped = augment_imags(input_image[in_row_ind:in_row_ind + patch_size,
+                                      in_col_ind:in_col_ind + patch_size])
+        input_cropped = nomalize_iamge(input_cropped)
         input_cropped = np.expand_dims(input_cropped, axis=0)
         input_batch[i] = input_cropped
 
         out_row_ind = in_row_ind * scale
         out_col_ind = in_col_ind * scale
 
-        out_cropped = utils.augment_imags(output_image[out_row_ind:out_row_ind + out_patch_size,
-                                          out_col_ind:out_col_ind + out_patch_size])
-        out_cropped = utils.nomalize_iamge(out_cropped)
+        out_cropped = augment_imags(output_image[out_row_ind:out_row_ind + out_patch_size,
+                                    out_col_ind:out_col_ind + out_patch_size])
+        out_cropped = nomalize_iamge(out_cropped)
         out_cropped = np.expand_dims(out_cropped, axis=0)
         output_batch[i] = out_cropped
 
@@ -112,9 +116,9 @@ def train():
     ##=================  MODEL TEST  ========================###
     sample_ind = 37
     sample_input_imgs, sample_output_imgs = prepare_nn_data(valid_hr_list, valid_lr_list, sample_ind)
-    tl.vis.save_images(utils.truncate_images(sample_input_imgs), [ni, ni],
+    tl.vis.save_images(truncate_images(sample_input_imgs), [ni, ni],
                        save_dir + '/train_sample_input.png')
-    tl.vis.save_images(utils.truncate_images(sample_output_imgs), [ni, ni],
+    tl.vis.save_images(truncate_images(sample_output_imgs), [ni, ni],
                        save_dir + '/train_sample_output.png')
 
     net_image_test, net_grad_test, _, _ = model.LapSRN(t_image, is_train=False, reuse=True)
@@ -156,55 +160,86 @@ def train():
             if config.train.dump_intermediate_result is True:
                 valid_output, valid_grad_output = sess.run([net_image_test.outputs, net_grad_test.outputs],
                                                            {t_image: sample_input_imgs})
-                tl.vis.save_images(utils.truncate_images(valid_output), [ni, ni],
+                tl.vis.save_images(truncate_images(valid_output), [ni, ni],
                                    save_dir + "/train_predict_%d.png" % epoch)
-                tl.vis.save_images(utils.truncate_images(np.abs(valid_grad_output)), [ni, ni],
+                tl.vis.save_images(truncate_images(np.abs(valid_grad_output)), [ni, ni],
                                    save_dir + '/train_predict_grad_%d.png' % epoch)
 
+        if (epoch != 0 and epoch % 50 == 0):
+            train_psnr(epoch)
 
-def test(file):
+
+def test(file, filename, dataset):
     try:
-        img = utils.get_iamge(file)
+        img = get_iamge(file)
     except IOError:
         print("cannot open %s" % file)
     else:
         checkpoint_dir = config.model.checkpoint_path
-        save_dir = "%s/%s" % (config.model.result_path, tl.global_flag["mode"])
-
-        input_image = utils.nomalize_iamge(img)
+        save_dir = "%s/%s%s%s" % (config.model.result_path, tl.global_flag["mode"], "/", dataset)
+        psnr = None
+        input_image = modcrop(img)
+        input_image = nomalize_iamge(input_image)
         size = input_image.shape
         t_image = tf.placeholder("float32", [None, size[0], size[1], size[2]], name="input_image")
-        net_image2, _, _, _ = model.LapSRN(t_image, is_train=False, reuse=False)
+        net_image2, _, _, _ = model.LapSRN(t_image, is_train=False, reuse=tf.AUTO_REUSE)
 
         ##==================================== RESTORE G =======================================###
-        sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=False))
-        tl.layers.initialize_global_variables(sess)
-        tl.files.load_and_assign_npz(sess=sess, name=checkpoint_dir + "/params_train.npz", network=net_image2)
+        with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)) as sess:
+            tl.layers.initialize_global_variables(sess)
+            tl.files.load_and_assign_npz(sess=sess, name=checkpoint_dir + "/params_train.npz", network=net_image2)
 
-        ##==================================== TEST ============================================###
-        start_time = time.time()
-        out = sess.run(net_image2.outputs, {t_image: [input_image]})
-        print("took: %4.4fs" % (time.time() - start_time))
+            # ==================================== TEST ============================================###
+            out = sess.run(net_image2.outputs, {t_image: [input_image]})
 
-        tl.files.exists_or_mkdir(save_dir)
-        tl.vis.save_image(utils.truncate_images(out[0, :, :, :]), save_dir + "/test_output.png")
-        tl.vis.save_image(input_image, save_dir + "/test_input.png")
+            tl.files.exists_or_mkdir(save_dir)
+            tl.vis.save_image(input_image, save_dir + "/test_input_%s" % filename)
+            tl.vis.save_image(truncate_images(out[0, :, :, :]), save_dir + "/test_output_%s" % filename)
+            image_bicubic(save_dir + "/test_output_%s" % filename, save_dir + "/test_output_%s" % filename)
+            psnr = img_psnr(save_dir + "/test_input_%s" % filename, save_dir + "/test_output_%s" % filename)
+
+        return psnr
 
 
 if __name__ == "__main__":
     # python main.py -m test -f TESTIMAGE
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--mode", choices=["train", "test"], default="train", help="select mode")
-    parser.add_argument("-f", "--file", help="input file")
+    parser.add_argument("-p", "--path", help="input file path")
 
     args = parser.parse_args()
     tl.global_flag["mode"] = args.mode
+    args.path = config.test.test_Data
     if tl.global_flag["mode"] == "train":
         train()
     elif tl.global_flag["mode"] == "test":
-        if (args.file is None):
-            raise Exception("Please enter input file name for test mode")
-        else:
-            test(args.file)
+        write = pd.ExcelWriter(os.path.join(config.test.test_path, "result.xlsx"))
+        df = None
+        for dataset in os.listdir(args.path):
+            all_psnr = 0.0
+            start_time = time.time()
+            result = []
+            filenames = []
+            data_path = "%s%s%s" % (args.path, dataset, "/")
+            for filename in os.listdir(data_path):
+                file = os.path.join(data_path, filename)
+                psnr = test(file, filename, dataset)
+                filenames.append(filename)
+                result.append(psnr)
+            mean = np.mean(result)
+            alltime = time.time() - start_time
+            result.append(mean)
+            result.append(alltime)
+            filenames.append("mean")
+            filenames.append("time")
+
+            df = pd.DataFrame([result], index=["PSNR"], columns=filenames)
+            df.to_excel(write, dataset)
+        write.save()
+        write.close()
+        # if (args.file is None):
+        #     raise Exception("Please enter input file name for test mode")
+        # else:
+        #     test(args.file)
     else:
         raise Exception("Unknow --mode")

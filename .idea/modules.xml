@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/LapSRN.iml" filepath="$PROJECT_DIR$/.idea/LapSRN.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../image_encryption/.idea/image_encryption.iml" filepath="$PROJECT_DIR$/../image_encryption/.idea/image_encryption.iml" />
     </modules>
   </component>
 </project>

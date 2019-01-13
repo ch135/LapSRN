@@ -29,13 +29,17 @@ config.train.in_patch_size = 64
 config.train.out_patch_size = config.train.in_patch_size * config.model.scale
 config.train.batch_size_each_folder = 30
 config.train.log_write = False
-config.train.lr_init = 5 * 1.e-6
+config.train.lr_init = 1.e-5
 config.train.lr_decay = 0.5
-config.train.decay_iter = 10
+config.train.decay_iter = 50
 config.train.betal = 0.9
-config.train.n_epoch = 300
+config.train.n_epoch = 150
 config.train.dump_intermediate_result = True
 config.train.train_path = "./sample/train/"
+
+config.test = edict()
+config.test.test_Data = "./media/DATA/TEST/"
+config.test.test_path = "./sample/test/"
 
 # Convert Data to Json
 def log_config(filename, cfg):
